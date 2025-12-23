@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendar Despacho - LyL Ferretería</title>
+    <style>
+        :root { --naranja: #f58220; --negro: #1a1a1a; --blanco: #ffffff; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--negro); margin: 0; padding: 15px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: var(--blanco); width: 100%; max-width: 450px; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); box-sizing: border-box; }
+        .logo { width: 100%; max-width: 180px; height: auto; margin: 0 auto 15px; display: block; border-radius: 10px; }
+        h2 { color: var(--negro); text-align: center; font-size: clamp(18px, 5vw, 22px); margin: 0 0 20px; border-bottom: 3px solid var(--naranja); padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .optional-text { font-weight: normal; color: #888; font-size: 12px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .btn-send { background: var(--naranja); color: white; border: none; padding: 16px; width: 100%; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn-send:hover { background: #d46d16; }
+        #success-msg { display: none; text-align: center; color: #27ae60; background: #e8f5e9; padding: 20px; border-radius: 10px; font-weight: bold; border: 1px solid #27ae60; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <img src="Logo Ferreteria.jpg" alt="Logo LyL" class="logo">
+    <h2>AGENDAR DESPACHO</h2>
+
+    <div id="form-content">
+        <div class="form-group"><label>Nombre Completo *</label><input type="text" id="nombre" required></div>
+        <div class="form-group"><label>Teléfono WhatsApp *</label><input type="tel" id="telefono" placeholder="569XXXXXXXX" required></div>
+        <div class="form-group"><label>Dirección de Entrega *</label><input type="text" id="direccion" required></div>
+        <div class="form-group">
+            <label>Horario de Entrega *</label>
+            <select id="hora">
+                <option value="08:30 AM - 10:30 AM">08:30 AM - 10:30 AM</option>
+                <option value="10:30 AM - 12:30 PM">10:30 AM - 12:30 PM</option>
+                <option value="14:30 PM - 16:30 PM">14:30 PM - 16:30 PM</option>
+                <option value="16:30 PM - 18:00 PM">16:30 PM - 18:00 PM</option>
+            </select>
+        </div>
+        <div class="form-group"><label>N° Cotización <span class="optional-text">(Opcional)</span></label><input type="text" id="numCotizacion"></div>
+        <div class="form-group"><label>Subir PDF <span class="optional-text">(Opcional)</span></label><input type="file" id="pdfFile" accept="application/pdf"></div>
+        <div class="form-group"><label>Productos <span class="optional-text">(Opcional)</span></label><textarea id="productos" rows="3"></textarea></div>
+        <button class="btn-send" onclick="enviarDatos()">AGENDAR DESPACHO</button>
+    </div>
+
+    <div id="success-msg">✅ ¡Gracias!<br>Su despacho ha sido agendado.</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAgTXSkdjve47Up-z31fUeQ7Ht8nf4lz1c",
+        authDomain: "ferreteria-lyl.firebaseapp.com",
+        databaseURL: "https://ferreteria-lyl-default-rtdb.firebaseio.com",
+        projectId: "ferreteria-lyl",
+        storageBucket: "ferreteria-lyl.firebasestorage.app",
+        messagingSenderId: "690258788934",
+        appId: "1:690258788934:web:9daa100d3550ca66890047"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const storage = firebase.storage();
+
+    async function enviarDatos() {
+        const btn = document.querySelector('.btn-send');
+        const nombre = document.getElementById('nombre').value;
+        const telefono = document.getElementById('telefono').value;
+        const direccion = document.getElementById('direccion').value;
+        const pdfFile = document.getElementById('pdfFile').files[0];
+        
+        if(!nombre || !telefono || !direccion) return alert("Complete los campos obligatorios.");
+        
+        btn.disabled = true; btn.innerText = "Procesando...";
+
+        let pdfUrl = "";
+        if(pdfFile) {
+            const ref = storage.ref('clientes_pdfs/' + Date.now() + '.pdf');
+            await ref.put(pdfFile);
+            pdfUrl = await ref.getDownloadURL();
+        }
+
+        database.ref('despachos').push({
+            cliente: nombre, telefono, direccion, pdfUrl,
+            hora: document.getElementById('hora').value,
+            numCotizacion: document.getElementById('numCotizacion').value || "Pendiente",
+            productos: document.getElementById('productos').value || "No especificados"
+        }).then(() => {
+            const msg = `🔔 *NUEVO DESPACHO*%0A*Cliente:* ${nombre}%0A*Dirección:* ${direccion}`;
+            window.open(`https://wa.me/56982085052?text=${msg}`, '_blank');
+            document.getElementById('form-content').style.display = 'none';
+            document.getElementById('success-msg').style.display = 'block';
+        });
+    }
+</script>
+</body>
+</html>

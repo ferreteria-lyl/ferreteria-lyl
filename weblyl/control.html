@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - LyL</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #ecf0f1; padding: 15px; }
+        h1 { text-align: center; font-size: clamp(20px, 6vw, 28px); border-bottom: 4px solid #f58220; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .card-admin { background: white; padding: 20px; border-radius: 12px; border-left: 8px solid #f58220; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .detail { font-size: 14px; margin: 10px 0; line-height: 1.4; color: #333; }
+        .box-p { background: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #eee; margin: 10px 0; font-size: 14px; }
+        .btn-pdf { display: block; background: #3498db; color: white; text-align: center; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-bottom: 10px; }
+        .btn-way { background: #25D366; color: white; border: none; padding: 14px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 8px; }
+        .btn-del { background: #e74c3c; color: white; border: none; padding: 14px; width: 100%; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>📋 Agenda de Despachos</h1>
+    <div class="grid" id="grid"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAgTXSkdjve47Up-z31fUeQ7Ht8nf4lz1c",
+            authDomain: "ferreteria-lyl.firebaseapp.com",
+            databaseURL: "https://ferreteria-lyl-default-rtdb.firebaseio.com",
+            projectId: "ferreteria-lyl",
+            storageBucket: "ferreteria-lyl.firebasestorage.app",
+            messagingSenderId: "690258788934",
+            appId: "1:690258788934:web:9daa100d3550ca66890047"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        database.ref('despachos').on('value', (snapshot) => {
+            const data = snapshot.val();
+            const grid = document.getElementById('grid'); grid.innerHTML = "";
+            if (!data) return grid.innerHTML = "<p>No hay despachos.</p>";
+
+            for (let id in data) {
+                let d = data[id];
+                let pdfBtn = d.pdfUrl ? `<a href="${d.pdfUrl}" target="_blank" class="btn-pdf">📄 VER PDF COTIZACIÓN</a>` : '';
+                grid.innerHTML += `
+                    <div class="card-admin">
+                        <h3>${d.cliente}</h3>
+                        <div class="detail">
+                            <strong>📍 Dirección:</strong> ${d.direccion}<br>
+                            <strong>📞 Tel:</strong> ${d.telefono}<br>
+                            <strong>⏰ Horario:</strong> ${d.hora}<br>
+                            <strong>🔢 Cotización:</strong> ${d.numCotizacion}
+                        </div>
+                        <div class="box-p"><strong>📦 Productos:</strong><br>${d.productos}</div>
+                        ${pdfBtn}
+                        <button class="btn-way" onclick="notificar('${d.telefono}', '${d.cliente}')">🚚 EN CAMINO</button>
+                        <button class="btn-del" onclick="eliminar('${id}')">🗑️ BORRAR</button>
+                    </div>`;
+            }
+        });
+
+        function notificar(tel, nom) {
+            window.open(`https://wa.me/${tel}?text=Hola ${nom}, tu despacho va en camino 🚚`, '_blank');
+        }
+
+        function eliminar(id) {
+            if(confirm("¿Borrar registro?")) database.ref('despachos/' + id).remove();
+        }
+    </script>
+</body>
+</html>
